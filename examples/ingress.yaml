@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/change-cause: kubectl apply --kubeconfig=config --filename=manifests.yaml
+      --record=true
+    kubernetes.io/ingress.class: nginx
+    meta.helm.sh/release-name: website
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  name: website
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: website.moon.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: website
+            port:
+              number: 3000
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - website.moon.com
+    secretName: website-tls

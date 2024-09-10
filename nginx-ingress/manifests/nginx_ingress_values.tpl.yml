@@ -1,0 +1,98 @@
+#
+controller:
+  service:
+    external:
+      enabled: true
+      annotations:
+        kubernetes.io/ingress.class: nginx
+  metrics:
+    port: 10254
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10254"
+  extraEnvs:
+  - name: HOST_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+  config:
+    log-format-upstream:  |
+     {
+      "msec": "$msec",
+      "connection": "$connection",
+      "connection_requests": "$connection_requests",
+      "pid": "$pid",
+      "request_id": "$request_id",
+      "request_length": "$request_length",
+      "remote_addr": "$remote_addr",
+      "remote_user": "$remote_user",
+      "remote_port": "$remote_port",
+      "time_local": "$time_local",
+      "time_iso8601": "$time_iso8601",
+      "request": "$request",
+      "request_uri": "$request_uri",
+      "args": "$args",
+      "status": "$status",
+      "body_bytes_sent": "$body_bytes_sent",
+      "bytes_sent": "$bytes_sent",
+      "http_referer": "$http_referer",
+      "http_user_agent": "$http_user_agent",
+      "http_x_forwarded_for": "$http_x_forwarded_for",
+      "http_host": "$http_host",
+      "server_name": "$server_name",
+      "request_time": "$request_time",
+      "upstream": "$upstream_addr",
+      "upstream_connect_time": "$upstream_connect_time",
+      "upstream_header_time": "$upstream_header_time",
+      "upstream_response_time": "$upstream_response_time",
+      "upstream_response_length": "$upstream_response_length",
+      "upstream_cache_status": "$upstream_cache_status",
+      "ssl_protocol": "$ssl_protocol",
+      "ssl_cipher": "$ssl_cipher",
+      "scheme": "$scheme",
+      "request_method": "$request_method",
+      "server_protocol": "$server_protocol",
+      "pipe": "$pipe",
+      "gzip_ratio": "$gzip_ratio"
+      }
+      
+    http-snippet: |
+      server {
+        listen 18080;
+        access_log off;
+
+        location /nginx_status {
+          allow all;
+          stub_status on;
+        }
+
+        location / {
+          return 404;
+        }
+      }
+
+      # converting seconds to milliseconds since epoch
+      map $msec $datadog_timestamp {
+        ~(.*)\.(.*) $1$2;
+      }
+
+      # up to 2 MongoDB ObjectIds are replaced by ?
+      # convention: https://docs.datadoghq.com/security/tracing/
+      map $uri $uri_masked {
+        "~^(.*/?)[0-9a-f]{24}(/?.*)[0-9a-f]{24}(/?.*)$" $1?$2?$3;
+        "~^(.*/?)[0-9a-f]{24}(/?.*)$" $1?$2;
+        default $uri;
+      }
+
+    log-format-escape-json: "true"
+  priorityClassName: system-node-critical
+  resources:
+    requests:
+      memory: 300Mi
+defaultBackend:
+  priorityClassName: system-node-critical
+  resources:
+    requests:
+      memory: 20Mi
