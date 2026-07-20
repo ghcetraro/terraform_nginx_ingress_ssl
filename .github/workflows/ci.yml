@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+
+      - name: Terraform fmt (informational)
+        continue-on-error: true
+        run: |
+          terraform fmt -check -recursive nginx-ingress || echo "fmt drift in nginx-ingress (informational)"
+          terraform fmt -check -recursive cert-manager || echo "fmt drift in cert-manager (informational)"
+
+      - name: Terraform init + validate
+        run: |
+          (cd nginx-ingress && terraform init -backend=false && terraform validate)
+          (cd cert-manager && terraform init -backend=false && terraform validate)
